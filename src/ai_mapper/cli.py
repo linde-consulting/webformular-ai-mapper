@@ -47,7 +47,7 @@ def run_map(input_path: str, output_dir: str, titel, leika_nummer, fim_base_url:
     out.mkdir(parents=True, exist_ok=True)
     (out / "schema.xdf.xml").write_text(ergebnis.xdf_xml, encoding="utf-8")
     (out / "schema.xsd").write_text(ergebnis.xsd_xml, encoding="utf-8")
-    (out / "formcycle-plugin-mapping.xml").write_text(ergebnis.formcycle_xml, encoding="utf-8")
+    (out / "formcycle-plugin-mapping.json").write_text(ergebnis.formcycle_json, encoding="utf-8")
     (out / "mapping-report.md").write_text(render_mapping_report_markdown(ergebnis), encoding="utf-8")
 
     print(f"Fertig. Ergebnisse in: {out.resolve()}")

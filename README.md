@@ -5,7 +5,9 @@ Baut aus den Feldern einer Formular-Maske automatisch:
 1. ein FIM-konformes **Referenzschema** (XDatenfelder-2.0-XML → XSD), unter Wiederverwendung
    bestehender, fachlich freigegebener FIM-Datenfelder wo möglich — als selbst hostbare Datei
    (GitHub, eigener Formularserver), damit sie in FIT-Connect per URI referenziert werden kann.
-2. ein **FORMCYCLE-Plugin-Template** (XML) zur Objektinitialisierung im Editor.
+2. ein **FORMCYCLE-Plugin-Template** (JSON) zur Gruppen-/Objektinitialisierung im Editor -
+   inklusive Bindung jedes FIM-Datenfelds an den technischen Namen des Webformularfelds
+   (`%formcycle_variable%`).
 
 Hintergrund: siehe `../Ausgangslage.docx`. Für viele Verwaltungsleistungen (LeiKa-Nummern) gibt
 es noch kein FIM-Referenzschema. Dieses Tool schließt die Lücke, statt das Schema manuell
@@ -67,11 +69,27 @@ Key nutzt es einen regelbasierten Fallback (String-Ähnlichkeit + Datentyp-Prüf
 Pipeline bleibt so auch ohne LLM-Zugang lauffähig, allerdings mit einfacherer Matching-Qualität
 bei unterschiedlichem Wortlaut.
 
-**Wichtige Einschränkung:** Das interne XML-Format des FORMCYCLE-FIT-Connect-Plugin-Editors ist
-öffentlich nicht dokumentiert. Das erzeugte `formcycle-plugin-mapping.xml` ist daher ein
-**Template auf Basis der dokumentierten FIT-Connect-URN-Konvention**, klar als Annahme
-gekennzeichnet (Kommentar im Dateikopf) – vor Produktiveinsatz mit einem echten
-FORMCYCLE-Export abgleichen.
+### Gruppen-Initialisierung + %-Variablen-Bindung (`formcycle_export.py`)
+
+Im FORMCYCLE-Editor muss später ein Format eingegeben werden, das (a) die Datenfeldgruppen aus
+dem Referenzschema initialisiert (nicht nur einzelne Felder) und (b) jedes FIM-Datenfeld an den
+**technischen Namen** des Webformularfelds bindet – über FORMCYCLE-typische
+`%variable%`-Syntax. Beispiel (live verifiziert): Das Feld "Vorname" nutzt im Referenzschema
+`F60000228`, das zur Gruppe `G00002115` ("Antragsteller – Natürliche Person") gehört; im
+Webformular hat das Feld den technischen Namen `tf1_st_Vorname` → die Bindung lautet
+`%tf1_st_Vorname%`.
+
+`formcycle-plugin-mapping.json` bildet das ab: `gruppenInitialisierung` fasst wiederverwendete
+Felder nach ihrer Ursprungsgruppe zusammen (Gruppen-ID/-Version kommt aus dem BOB-Domain-Kontext,
+siehe oben), `ungruppierteFelder` enthält neue oder gruppenlose Felder. Jeder Formularfeld-Eintrag
+trägt seinen `technischer_name` (z. B. FORMCYCLE-Feldname `tf1_st_Vorname`, unverändert aus dem
+Export übernommen) als `%...%`-Variable.
+
+**Wichtige Einschränkung:** Das interne Format des FORMCYCLE-FIT-Connect-Plugin-Editors ist
+öffentlich nicht dokumentiert (auch ein dazu verlinktes YouTube-Video hatte weder Untertitel noch
+Beschreibung – kein Transkript extrahierbar). Das erzeugte `formcycle-plugin-mapping.json` ist
+daher weiterhin ein **Template**, klar als Annahme gekennzeichnet (`_hinweis`-Feld) – vor
+Produktiveinsatz mit einem echten FORMCYCLE-Editor-Zustand abgleichen.
 
 ## Lokal starten
 
@@ -179,14 +197,15 @@ Unterstützte `typ`-Werte: `text`, `mehrzeilig`, `email`, `tel`, `zahl`, `ganzza
 
 - `schema.xdf.xml` – komponiertes XDatenfelder-2.0-Referenzschema
 - `schema.xsd` – daraus generierte XSD ("URI-Schema" für FIT-Connect/SSP)
-- `formcycle-plugin-mapping.xml` – Annahme-Template für den FORMCYCLE-Editor
+- `formcycle-plugin-mapping.json` – Annahme-Template für den FORMCYCLE-Editor (Gruppen +
+  %-Variablen-Bindung, siehe oben)
 - `mapping-report.md` – Transparenz: welches Feld wiederverwendet/neu, mit Begründung
 
 ## Veröffentlichung des Schemas (manuell)
 
 Damit die XSD per URI aus FIT-Connect/FORMCYCLE erreichbar ist, `schema.xsd` in ein
 öffentliches GitHub-Repo (z. B. GitHub Pages) oder auf den eigenen Formularserver legen und die
-resultierende URL in `formcycle-plugin-mapping.xml` (`schemaUri`) sowie bei der
+resultierende URL in `formcycle-plugin-mapping.json` (`schemaUri`) sowie bei der
 Zustellpunkt-Registrierung im SSP eintragen. Dieser Schritt ist bewusst nicht automatisiert.
 
 ## Bekannte Grenzen / nächste Schritte
@@ -199,10 +218,12 @@ Zustellpunkt-Registrierung im SSP eintragen. Dieser Schritt ist bewusst nicht au
   getestet (aktuell als Freitext-`praezisierung` statt echter Codeliste abgebildet) – vor
   Nutzung mit einem echten Auswahlfeld verifizieren.
 - Kein automatisches Publizieren nach GitHub (bewusst, siehe oben).
-- FORMCYCLE-Template ungeprüft gegen echten Export (siehe Hinweis oben).
+- FORMCYCLE-Template ungeprüft gegen echten Editor-Zustand (siehe Hinweis oben) – die
+  Gruppen-/%-Variablen-Struktur folgt der Beschreibung des Kunden, aber ohne 1:1-Abgleich.
 - Matching ist feldweise, nicht gruppenweise: eine zusammengehörige BOB-Datenfeldgruppe (z. B.
   "Anschrift Inland" mit Straße/PLZ/Ort) wird aktuell als einzelne Felder erkannt, nicht als
-  Gruppe im Ganzen übernommen. Strukturell valide, aber weniger elegant als im Original-BOB.
+  Gruppe im Ganzen übernommen. Für den FORMCYCLE-Export werden REUSE-Felder aber wieder korrekt
+  nach ihrer Ursprungsgruppe zusammengefasst (`gruppenInitialisierung`).
 - Der regelbasierte Fallback (ohne `ANTHROPIC_API_KEY`) erkennt keine Synonyme
   ("Nachname" vs. "Familienname") – dafür ist der Claude-Pfad deutlich zuverlässiger.
 - CSV/XLSX-Spaltenformat ist ein von uns definierter Vertrag, kein echter Formcycle-Rohexport

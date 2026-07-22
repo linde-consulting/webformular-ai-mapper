@@ -16,6 +16,11 @@ class Formularfeld(BaseModel):
     optionen: Optional[List[str]] = None
     abschnitt: Optional[str] = None
     hilfetext: Optional[str] = None
+    # Technischer Name im Ursprungssystem (z. B. FORMCYCLE-Feldname wie
+    # "tf1_st_Vorname") - unverändert, nicht slugifiziert. Wird für die
+    # %-Variablen-Bindung im FORMCYCLE-Export gebraucht. Fällt auf `id` zurück,
+    # wenn das Ursprungssystem keinen eigenen technischen Namen liefert (z. B. CSV/XLSX).
+    technischer_name: Optional[str] = None
 
 
 class FormularInput(BaseModel):
@@ -34,6 +39,10 @@ class FimKandidat(BaseModel):
     feldart: Optional[str] = None
     datentyp: Optional[str] = None
     aus_domain_kontext: bool = False
+    # Datenfeldgruppe, in der dieses Datenfeld im Ursprungsschema eingebettet war
+    # (nur bekannt für über harvest_bob_bausteine geerntete Domain-Kontext-Kandidaten).
+    gruppe_id: Optional[str] = None
+    gruppe_version: Optional[str] = None
 
 
 class LeikaKontext(BaseModel):

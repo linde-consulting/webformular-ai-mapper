@@ -107,6 +107,10 @@ def parse_formcycle_export(daten: dict) -> List[Formularfeld]:
 
         label = _label_bereinigen(props.get("label", "")) or props.get("name") or "unbenannt"
 
+        # Technischer Name unverändert übernehmen (z. B. "tf1_st_Vorname") - wird
+        # später für die %-Variablen-Bindung im FORMCYCLE-Export gebraucht.
+        technischer_name = props.get("name") or props.get("id")
+
         feld_id = _slugify(props.get("aliasname") or props.get("name") or props.get("id", "feld"))
         if feld_id in vergebene_ids:
             vergebene_ids[feld_id] += 1
@@ -127,6 +131,7 @@ def parse_formcycle_export(daten: dict) -> List[Formularfeld]:
                 optionen=optionen,
                 abschnitt=_abschnitt_fuer(item),
                 hilfetext=_label_bereinigen(props.get("helptext", "")) or None,
+                technischer_name=technischer_name,
             )
         )
 

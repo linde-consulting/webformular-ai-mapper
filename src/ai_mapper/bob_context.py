@@ -23,12 +23,40 @@ Dieser Kontext funktioniert komplett ohne LLM - reine FIM-API-Aufrufe.
 from __future__ import annotations
 
 import re
-from typing import List
+import xml.etree.ElementTree as ET
+from typing import Iterator, List, Optional, Tuple
 
 from .fim_client import XDF2_NS, FimClient
 from .models import FimKandidat, LeikaKontext
 
 BOB_NUMMERNKREIS = "60000"
+
+
+def _datenfelder_mit_gruppe(
+    elem: ET.Element, aktuelle_gruppe: Optional[Tuple[str, str]] = None
+) -> Iterator[Tuple[ET.Element, Optional[Tuple[str, str]]]]:
+    """Rekursiver Baum-Walk: liefert jedes <datenfeld> zusammen mit der ID/Version
+    der unmittelbar umschließenden <datenfeldgruppe> (falls vorhanden).
+
+    Wichtig für die spätere FORMCYCLE-Bindung: ein Datenfeld allein reicht nicht -
+    die Gruppe, in der es im Referenzschema steht (z. B. G00002115 "Antragsteller -
+    Natürliche Person"), muss mit übergeben werden.
+    """
+    tag = elem.tag.rsplit("}", 1)[-1]
+
+    if tag == "datenfeldgruppe":
+        ident = elem.find(f"{{{XDF2_NS}}}identifikation")
+        if ident is not None:
+            gruppe_id = ident.find(f"{{{XDF2_NS}}}id").text
+            gruppe_version = ident.find(f"{{{XDF2_NS}}}version").text
+            aktuelle_gruppe = (gruppe_id, gruppe_version)
+
+    if tag == "datenfeld":
+        yield elem, aktuelle_gruppe
+        return  # Datenfelder haben keine weiteren datenfeld-Kinder
+
+    for kind in elem:
+        yield from _datenfelder_mit_gruppe(kind, aktuelle_gruppe)
 
 
 def _nummernkreis_von_id(fim_id: str) -> str:
@@ -80,7 +108,7 @@ def harvest_bob_bausteine(kontext: LeikaKontext, fim_client: FimClient, max_sche
         except Exception:
             continue
 
-        for feld in root.iter(f"{{{XDF2_NS}}}datenfeld"):
+        for feld, gruppe in _datenfelder_mit_gruppe(root):
             ident = feld.find(f"{{{XDF2_NS}}}identifikation")
             if ident is None:
                 continue
@@ -105,6 +133,8 @@ def harvest_bob_bausteine(kontext: LeikaKontext, fim_client: FimClient, max_sche
                     feldart=feldart_elem.text if feldart_elem is not None else None,
                     datentyp=datentyp_elem.text if datentyp_elem is not None else None,
                     aus_domain_kontext=True,
+                    gruppe_id=gruppe[0] if gruppe else None,
+                    gruppe_version=gruppe[1] if gruppe else None,
                 )
             )
 

@@ -21,7 +21,7 @@ class MappingErgebnis:
     report: MappingReport
     xdf_xml: str
     xsd_xml: str
-    formcycle_xml: str
+    formcycle_json: str
 
 
 def _namespace_slug(titel: str) -> str:
@@ -97,10 +97,11 @@ def run_pipeline(formular: FormularInput, fim_client: FimClient) -> MappingErgeb
         f"{{{schema_builder.XDF2_NS}}}stammdatenschema/{{{schema_builder.XDF2_NS}}}identifikation/{{{schema_builder.XDF2_NS}}}id"
     ).text
 
-    formcycle_xml = build_formcycle_template(
+    formcycle_json = build_formcycle_template(
         schema_id=schema_id,
         schema_version="1.0",
         titel=formular.titel,
+        felder=formular.felder,
         matches=matches,
         leika_nummer=formular.leika_nummer,
     )
@@ -114,7 +115,7 @@ def run_pipeline(formular: FormularInput, fim_client: FimClient) -> MappingErgeb
         matches=matches,
     )
 
-    return MappingErgebnis(report=report, xdf_xml=xdf_xml, xsd_xml=xsd_xml, formcycle_xml=formcycle_xml)
+    return MappingErgebnis(report=report, xdf_xml=xdf_xml, xsd_xml=xsd_xml, formcycle_json=formcycle_json)
 
 
 def render_mapping_report_markdown(ergebnis: MappingErgebnis) -> str:
