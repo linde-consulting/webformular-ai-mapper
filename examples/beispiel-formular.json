@@ -1,0 +1,49 @@
+{
+  "titel": "Meldeformular Infektionsschutz Gesundheitsamt",
+  "leika_nummer": "99089009123000",
+  "felder": [
+    {
+      "id": "nachname",
+      "label": "Nachname",
+      "typ": "text",
+      "pflichtfeld": true,
+      "abschnitt": "Angaben zur betroffenen Person"
+    },
+    {
+      "id": "vorname",
+      "label": "Vorname",
+      "typ": "text",
+      "pflichtfeld": true,
+      "abschnitt": "Angaben zur betroffenen Person"
+    },
+    {
+      "id": "geburtsdatum",
+      "label": "Geburtsdatum",
+      "typ": "datum",
+      "pflichtfeld": true,
+      "abschnitt": "Angaben zur betroffenen Person"
+    },
+    {
+      "id": "telefon",
+      "label": "Telefonnummer",
+      "typ": "tel",
+      "pflichtfeld": false,
+      "abschnitt": "Angaben zur betroffenen Person"
+    },
+    {
+      "id": "symptombeginn",
+      "label": "Symptombeginn",
+      "typ": "datum",
+      "pflichtfeld": true,
+      "abschnitt": "Angaben zur Erkrankung",
+      "hilfetext": "Datum, an dem die ersten Symptome aufgetreten sind."
+    },
+    {
+      "id": "einrichtung_betroffen",
+      "label": "Zustimmung zur Datenweitergabe an das Gesundheitsamt",
+      "typ": "checkbox",
+      "pflichtfeld": true,
+      "abschnitt": "Angaben zur Erkrankung"
+    }
+  ]
+}

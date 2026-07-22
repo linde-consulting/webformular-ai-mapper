@@ -1,0 +1,7 @@
+Abschnitt,Feld-ID,Label,Typ,Pflichtfeld,Optionen,Hilfetext
+Angaben zur betroffenen Person,nachname,Nachname,text,ja,,
+Angaben zur betroffenen Person,vorname,Vorname,text,ja,,
+Angaben zur betroffenen Person,geburtsdatum,Geburtsdatum,datum,ja,,
+Angaben zur betroffenen Person,telefon,Telefonnummer,tel,nein,,
+Angaben zur Erkrankung,symptombeginn,Symptombeginn,datum,ja,,Datum an dem die ersten Symptome aufgetreten sind.
+Angaben zur Erkrankung,einwilligung,Zustimmung zur Datenweitergabe an das Gesundheitsamt,checkbox,ja,,
