@@ -17,11 +17,12 @@ def test_end_to_end_mit_beispielformular():
 
     assert ergebnis.report.schema_id.startswith("S9")
     assert "xs:schema" in ergebnis.xsd_xml
+    assert '"$schema"' in ergebnis.json_schema
 
     formcycle_daten = json.loads(ergebnis.formcycle_json)
-    assert "fachdatenSchema" in formcycle_daten
-    assert "gruppenInitialisierung" in formcycle_daten
-    assert "ungruppierteFelder" in formcycle_daten
+    assert "editorFelder" in formcycle_daten
+    assert "nachrichtImJsonFormat" in formcycle_daten
+    assert formcycle_daten["editorFelder"]["artDerNachricht"] == "JSON Struktur aus Editor"
     assert len(ergebnis.report.matches) == len(formular.felder)
 
     report_md = render_mapping_report_markdown(ergebnis)

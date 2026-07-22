@@ -4,6 +4,7 @@ Verifiziert gegen die echte API am 2026-07-14:
 - GET  /api/v1/fields / /api/v1/groups / /api/v1/schemas  (Volltextsuche, Parameter `fts_query`)
 - GET  /api/v1/fields/{namespace}/{fim_id}/{fim_version}/xdf  (XDatenfelder-2.0-XML-Export)
 - POST /tools/xdf2-xsd-converter  (multipart, Feldname `schema`) -> XSD als application/xml
+- POST /tools/xdf2-json-schema-converter  (gleiche Multipart-Form) -> JSON Schema
 """
 from __future__ import annotations
 
@@ -111,4 +112,18 @@ class FimClient:
         )
         if resp.status_code != 200:
             raise FimClientError(f"XSD-Konvertierung fehlgeschlagen ({resp.status_code}): {resp.text[:500]}")
+        return resp.text
+
+    def convert_xdf2_to_json_schema(self, xdf2_xml: str, code_lists: Optional[List[bytes]] = None) -> str:
+        """Für FORMCYCLE-Nachrichten vom Typ 'JSON Struktur aus Editor' (statt XSD/XML)."""
+        files = [("schema", ("schema.xml", xdf2_xml.encode("utf-8"), "application/xml"))]
+        for i, cl in enumerate(code_lists or []):
+            files.append(("code_lists", (f"codeliste_{i}.xml", cl, "application/xml")))
+        resp = self._session.post(
+            f"{self.base_url}/tools/xdf2-json-schema-converter", files=files, timeout=self.timeout
+        )
+        if resp.status_code != 200:
+            raise FimClientError(
+                f"JSON-Schema-Konvertierung fehlgeschlagen ({resp.status_code}): {resp.text[:500]}"
+            )
         return resp.text

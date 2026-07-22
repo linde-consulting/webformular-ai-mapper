@@ -21,6 +21,7 @@ class MappingErgebnis:
     report: MappingReport
     xdf_xml: str
     xsd_xml: str
+    json_schema: str
     formcycle_json: str
 
 
@@ -92,6 +93,7 @@ def run_pipeline(formular: FormularInput, fim_client: FimClient) -> MappingErgeb
     xdf_xml = schema_builder.to_xml_string(schema_root)
 
     xsd_xml = fim_client.convert_xdf2_to_xsd(xdf_xml)
+    json_schema = fim_client.convert_xdf2_to_json_schema(xdf_xml)
 
     schema_id = schema_root.find(
         f"{{{schema_builder.XDF2_NS}}}stammdatenschema/{{{schema_builder.XDF2_NS}}}identifikation/{{{schema_builder.XDF2_NS}}}id"
@@ -115,7 +117,13 @@ def run_pipeline(formular: FormularInput, fim_client: FimClient) -> MappingErgeb
         matches=matches,
     )
 
-    return MappingErgebnis(report=report, xdf_xml=xdf_xml, xsd_xml=xsd_xml, formcycle_json=formcycle_json)
+    return MappingErgebnis(
+        report=report,
+        xdf_xml=xdf_xml,
+        xsd_xml=xsd_xml,
+        json_schema=json_schema,
+        formcycle_json=formcycle_json,
+    )
 
 
 def render_mapping_report_markdown(ergebnis: MappingErgebnis) -> str:

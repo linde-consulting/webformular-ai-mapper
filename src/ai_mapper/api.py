@@ -82,6 +82,7 @@ async def map_formular(
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("schema.xdf.xml", ergebnis.xdf_xml)
         zf.writestr("schema.xsd", ergebnis.xsd_xml)
+        zf.writestr("schema.jsonschema.json", ergebnis.json_schema)
         zf.writestr("formcycle-plugin-mapping.json", ergebnis.formcycle_json)
         zf.writestr("mapping-report.md", render_mapping_report_markdown(ergebnis))
     buffer.seek(0)

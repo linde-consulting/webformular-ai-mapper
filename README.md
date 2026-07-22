@@ -5,9 +5,9 @@ Baut aus den Feldern einer Formular-Maske automatisch:
 1. ein FIM-konformes **Referenzschema** (XDatenfelder-2.0-XML → XSD), unter Wiederverwendung
    bestehender, fachlich freigegebener FIM-Datenfelder wo möglich — als selbst hostbare Datei
    (GitHub, eigener Formularserver), damit sie in FIT-Connect per URI referenziert werden kann.
-2. ein **FORMCYCLE-Plugin-Template** (JSON) zur Gruppen-/Objektinitialisierung im Editor -
-   inklusive Bindung jedes FIM-Datenfelds an den technischen Namen des Webformularfelds
-   (`%formcycle_variable%`).
+2. ein **FORMCYCLE-Plugin-Template** (JSON, direkt in den FIT-Connect-Editor kopierbar) zur
+   Gruppen-/Objektinitialisierung - inklusive Bindung jedes FIM-Datenfelds an den technischen
+   Namen des Webformularfelds über FORMCYCLE-Platzhalter-Syntax (`[%$variable%]`).
 
 Hintergrund: siehe `../Ausgangslage.docx`. Für viele Verwaltungsleistungen (LeiKa-Nummern) gibt
 es noch kein FIM-Referenzschema. Dieses Tool schließt die Lücke, statt das Schema manuell
@@ -39,9 +39,11 @@ Ein Datenfeld wird nur wiederverwendet, wenn zusätzlich der FIM-Datentyp zum Fo
 passt (verhindert Fehltreffer wie "Geburtsdatum" ↔ "Geburtsname" – ähnlicher Wortlaut, aber
 komplett andere Bedeutung und Datentyp).
 
-Das komponierte Schema wird über den offiziellen FIM-Portal-Konverter
-(`POST /tools/xdf2-xsd-converter`) in eine gültige XSD umgewandelt — kein selbstgebauter,
-fehleranfälliger XDF→XSD-Konverter nötig.
+Das komponierte Schema wird über die offiziellen FIM-Portal-Konverter in eine gültige XSD
+(`POST /tools/xdf2-xsd-converter`) **und** ein JSON Schema (`POST /tools/xdf2-json-schema-converter`)
+umgewandelt — kein selbstgebauter, fehleranfälliger Konverter nötig. Beide werden gebraucht: die
+XSD als "URI-Schema" für den klassischen FIT-Connect-XML-Weg, das JSON Schema für FORMCYCLEs
+Nachrichtentyp "JSON Struktur aus Editor" (siehe unten).
 
 ### BOB-Bausteine über die LeiKa-Nummer (`bob_context.py`)
 
@@ -69,27 +71,58 @@ Key nutzt es einen regelbasierten Fallback (String-Ähnlichkeit + Datentyp-Prüf
 Pipeline bleibt so auch ohne LLM-Zugang lauffähig, allerdings mit einfacherer Matching-Qualität
 bei unterschiedlichem Wortlaut.
 
-### Gruppen-Initialisierung + %-Variablen-Bindung (`formcycle_export.py`)
+### FORMCYCLE-Editor-Template (`formcycle_export.py`)
 
-Im FORMCYCLE-Editor muss später ein Format eingegeben werden, das (a) die Datenfeldgruppen aus
-dem Referenzschema initialisiert (nicht nur einzelne Felder) und (b) jedes FIM-Datenfeld an den
-**technischen Namen** des Webformularfelds bindet – über FORMCYCLE-typische
-`%variable%`-Syntax. Beispiel (live verifiziert): Das Feld "Vorname" nutzt im Referenzschema
-`F60000228`, das zur Gruppe `G00002115` ("Antragsteller – Natürliche Person") gehört; im
-Webformular hat das Feld den technischen Namen `tf1_st_Vorname` → die Bindung lautet
-`%tf1_st_Vorname%`.
+Verifiziert anhand eines echten Editor-Screenshots des FIT-Connect-Plugins (vom Kunden
+bereitgestellt, 2026-07-22). Der Editor hat u. a. diese Felder:
 
-`formcycle-plugin-mapping.json` bildet das ab: `gruppenInitialisierung` fasst wiederverwendete
-Felder nach ihrer Ursprungsgruppe zusammen (Gruppen-ID/-Version kommt aus dem BOB-Domain-Kontext,
-siehe oben), `ungruppierteFelder` enthält neue oder gruppenlose Felder. Jeder Formularfeld-Eintrag
-trägt seinen `technischer_name` (z. B. FORMCYCLE-Feldname `tf1_st_Vorname`, unverändert aus dem
-Export übernommen) als `%...%`-Variable.
+| Editor-Feld | Beispiel aus dem Screenshot |
+|---|---|
+| Empfänger-/Zustellpunkt-UUID | `1436f7a6-e4cc-4100-8ecd-a198e453f104` (aus SSP-Registrierung) |
+| Service Identifier (LeiKa-ID) | `urn:de:xima:formcycle:leistung:00000000000003` |
+| Service Bezeichnung | `Usergroup Workshop FIT-Connect` |
+| Art der Nachricht | `JSON Struktur aus Editor` |
+| Nachricht im JSON-Format | `{"someString":"[%$PROJECT_TITLE%]"}` |
+| Schema-URI | (öffentliche URL des Schemas) |
 
-**Wichtige Einschränkung:** Das interne Format des FORMCYCLE-FIT-Connect-Plugin-Editors ist
-öffentlich nicht dokumentiert (auch ein dazu verlinktes YouTube-Video hatte weder Untertitel noch
-Beschreibung – kein Transkript extrahierbar). Das erzeugte `formcycle-plugin-mapping.json` ist
-daher weiterhin ein **Template**, klar als Annahme gekennzeichnet (`_hinweis`-Feld) – vor
-Produktiveinsatz mit einem echten FORMCYCLE-Editor-Zustand abgleichen.
+Zwei wichtige Erkenntnisse daraus:
+
+1. **FORMCYCLE-Platzhalter-Syntax ist `[%$NAME%]`**, nicht `%NAME%`.
+2. Bei "JSON Struktur aus Editor" ist die Nachricht **direkt die Fachdaten-Nutzlast** – keine
+   Mapping-Metadatenstruktur. Ihre Property-Namen entsprechen exakt den Keys des über
+   `/tools/xdf2-json-schema-converter` erzeugten JSON Schemas: `{FIM-ID}V{Version}`
+   (z. B. `F60000228V2.0`), verschachtelt pro Datenfeldgruppe (z. B. `G00002115V1.0`).
+
+`formcycle-plugin-mapping.json` bildet das direkt ab:
+
+```json
+{
+  "editorFelder": {
+    "empfaengerZustellpunktUuid": "<im FIT-Connect-SSP nachschlagen>",
+    "serviceIdentifier": "urn:de:linde-consulting:ai-mapper:leistung:99003002022000",
+    "serviceBezeichnung": "Meldeformular Infektionsschutz Gesundheitsamt",
+    "artDerNachricht": "JSON Struktur aus Editor",
+    "schemaUri": "https://.../schema.jsonschema.json"
+  },
+  "nachrichtImJsonFormat": {
+    "G00002115V1.0": { "F60000228V2.0": "[%$tf1_st_Vorname%]" },
+    "F92331743V1.0": "[%$tf1_st_Nachname%]"
+  }
+}
+```
+
+`nachrichtImJsonFormat` ist 1:1 in das Editor-Feld "Nachricht im JSON-Format" kopierbar. Die
+Gruppenzuordnung (`G00002115V1.0`) kommt aus dem BOB-Domain-Kontext (siehe oben); Felder ohne
+bekannte Ursprungsgruppe (neue Felder oder generische Treffer ohne Gruppen-Info) liegen auf der
+obersten Ebene. Der `serviceIdentifier` nutzt eine an das Screenshot-Beispiel angelehnte URN mit
+der eigenen LeiKa-Nummer – die genaue URN-Konvention ist vendor-/instanzabhängig (das
+Screenshot-Beispiel nutzt eine laufende interne Nummer, keine offizielle LeiKa) und muss ggf. an
+die tatsächliche SSP-Konvention der Behörde angepasst werden.
+
+**Wichtige Einschränkung:** Ohne 1:1-Abgleich an einem konkret konfigurierten
+FIT-Connect-Zustellpunkt bleibt das ein **Template**, klar als Annahme gekennzeichnet
+(`_hinweis`-Feld) – die übrigen Editor-Felder (Zustellpunkt-UUID, Vorgangs-ID) sind
+umgebungsspezifisch und müssen manuell ergänzt werden.
 
 ## Lokal starten
 
@@ -196,9 +229,10 @@ Unterstützte `typ`-Werte: `text`, `mehrzeilig`, `email`, `tel`, `zahl`, `ganzza
 ## Output
 
 - `schema.xdf.xml` – komponiertes XDatenfelder-2.0-Referenzschema
-- `schema.xsd` – daraus generierte XSD ("URI-Schema" für FIT-Connect/SSP)
-- `formcycle-plugin-mapping.json` – Annahme-Template für den FORMCYCLE-Editor (Gruppen +
-  %-Variablen-Bindung, siehe oben)
+- `schema.xsd` – daraus generierte XSD ("URI-Schema" für FIT-Connect/SSP, klassischer XML-Weg)
+- `schema.jsonschema.json` – daraus generiertes JSON Schema (für FORMCYCLEs "JSON Struktur aus Editor")
+- `formcycle-plugin-mapping.json` – direkt in den FIT-Connect-Editor kopierbares Template
+  (Gruppen + `[%$...%]`-Platzhalter-Bindung, siehe oben)
 - `mapping-report.md` – Transparenz: welches Feld wiederverwendet/neu, mit Begründung
 
 ## Veröffentlichung des Schemas (manuell)
@@ -218,12 +252,13 @@ Zustellpunkt-Registrierung im SSP eintragen. Dieser Schritt ist bewusst nicht au
   getestet (aktuell als Freitext-`praezisierung` statt echter Codeliste abgebildet) – vor
   Nutzung mit einem echten Auswahlfeld verifizieren.
 - Kein automatisches Publizieren nach GitHub (bewusst, siehe oben).
-- FORMCYCLE-Template ungeprüft gegen echten Editor-Zustand (siehe Hinweis oben) – die
-  Gruppen-/%-Variablen-Struktur folgt der Beschreibung des Kunden, aber ohne 1:1-Abgleich.
+- FORMCYCLE-Template ungeprüft an einem konkreten Zustellpunkt (siehe Hinweis oben) – Struktur
+  folgt einem echten Editor-Screenshot, aber ohne 1:1-Abgleich an einer produktiven Konfiguration.
+  Zustellpunkt-UUID und Vorgangs-ID sind umgebungsspezifisch und bleiben Platzhalter.
 - Matching ist feldweise, nicht gruppenweise: eine zusammengehörige BOB-Datenfeldgruppe (z. B.
   "Anschrift Inland" mit Straße/PLZ/Ort) wird aktuell als einzelne Felder erkannt, nicht als
   Gruppe im Ganzen übernommen. Für den FORMCYCLE-Export werden REUSE-Felder aber wieder korrekt
-  nach ihrer Ursprungsgruppe zusammengefasst (`gruppenInitialisierung`).
+  nach ihrer Ursprungsgruppe verschachtelt (`nachrichtImJsonFormat`).
 - Der regelbasierte Fallback (ohne `ANTHROPIC_API_KEY`) erkennt keine Synonyme
   ("Nachname" vs. "Familienname") – dafür ist der Claude-Pfad deutlich zuverlässiger.
 - CSV/XLSX-Spaltenformat ist ein von uns definierter Vertrag, kein echter Formcycle-Rohexport
